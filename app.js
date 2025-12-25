@@ -6,7 +6,7 @@ const cors = require('cors');
 const dbConnect = require('./db/connect');
 const errorHandler = require('./middlewares/errorHandler');
 // Config
-
+const apiRouter = require('./routes/index');
 
 
 dotenv.config();
@@ -34,5 +34,7 @@ const start = async () => {
         console.log(error);
     }
 }
+// Mount API Routes
+app.use('/api', apiRouter);
 app.use(errorHandler);
 start();
