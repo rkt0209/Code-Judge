@@ -1,15 +1,16 @@
-// File: routes/index.js
 const express = require('express');
 const router = express.Router();
 
-// Import the specific route files
+// Import Routes
 const userAuthRoutes = require('./user/auth');
 const adminAuthRoutes = require('./admin/auth');
-const adminQuestionRoutes = require('./admin/question'); // This is the file you just created!
+const adminQuestionRoutes = require('./admin/question');
+const userQuestionRoutes = require('./user/question'); // New!
 
-// Connect them to URLs
+// Mount Routes
 router.use('/user/auth', userAuthRoutes);
 router.use('/admin/auth', adminAuthRoutes);
 router.use('/admin/question', adminQuestionRoutes);
+router.use('/user/question', userQuestionRoutes); // New!
 
 module.exports = router;
