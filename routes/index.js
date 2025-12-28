@@ -1,16 +1,17 @@
 const express = require('express');
 const router = express.Router();
 
-// Import Routes
 const userAuthRoutes = require('./user/auth');
 const adminAuthRoutes = require('./admin/auth');
 const adminQuestionRoutes = require('./admin/question');
-const userQuestionRoutes = require('./user/question'); // New!
+const userQuestionRoutes = require('./user/question');
+const userSubmissionRoutes = require('./user/submission'); // 1. Import this
 
 // Mount Routes
 router.use('/user/auth', userAuthRoutes);
 router.use('/admin/auth', adminAuthRoutes);
 router.use('/admin/question', adminQuestionRoutes);
-router.use('/user/question', userQuestionRoutes); // New!
+router.use('/user/question', userQuestionRoutes);
+router.use('/user/submission', userSubmissionRoutes); // 2. Add this
 
 module.exports = router;

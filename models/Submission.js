@@ -5,35 +5,29 @@ const SubmissionSchema = mongoose.Schema(
     user_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true
+      required: true,
     },
     question_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Question",
-      required: true
+      required: true,
     },
-    score: {
-      type: Number,
-      default: 0,
+    code: {
+      type: String,
+      required: true,
     },
-    penalty: {
-      type: Number,
-      default: 0,
+    language: {
+      type: String,
+      required: true,
+      enum: ["cpp", "c", "java", "python"], // Allowed languages
     },
     status: {
       type: String,
-      enum: [
-        "ACCEPTED",
-        "COMPILATION ERROR",
-        "TIME LIMIT EXCEEDED",
-        "RUNTIME ERROR",
-        "WRONG ANSWER",
-      ],
+      default: "Pending",
+      enum: ["Pending", "Accepted", "Wrong Answer", "Time Limit Exceeded", "Compilation Error"],
     },
   },
   { timestamps: true }
 );
 
-const Submission = mongoose.model("Submission", SubmissionSchema);
-
-module.exports = Submission;
+module.exports = mongoose.model("Submission", SubmissionSchema);
