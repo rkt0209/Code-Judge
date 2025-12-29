@@ -32,8 +32,8 @@ services:
       - REDIS_PORT=6379
       # Pass your Google Auth secrets here or use a .env file
       - JWT_SECRET=supersecretkey
-      - GOOGLE_CLIENT_ID=1063915641376-30412sfn08pm9i3an9uvrrpprkuegquc.apps.googleusercontent.com
-      - GOOGLE_CLIENT_SECRET=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
+      - GOOGLE_CLIENT_ID=Your_google_oauth_clientaID
+      - GOOGLE_CLIENT_SECRET=Your_google_oauth_clientSecret
       - USER_REDIRECT_URI=http://localhost:5000/api/user/auth/redirect
       - ADMIN_REDIRECT_URI=http://localhost:5000/api/admin/auth/redirect
     depends_on:
