@@ -32,9 +32,15 @@ if (!fs.existsSync(PROCESSING_DIR)) {
 }
 
 // --- HELPER FUNCTIONS ---
-const execShellCommand = (cmd) => {
+// Updated helper to enforce timeout inside Node.js
+const execShellCommand = (cmd, timeoutLimit = 0) => {
     return new Promise((resolve) => {
-        exec(cmd, { maxBuffer: 1024 * 10000 }, (error, stdout, stderr) => {
+        // We pass 'timeout' (in milliseconds) to exec options
+        exec(cmd, { maxBuffer: 1024 * 10000, timeout: timeoutLimit }, (error, stdout, stderr) => {
+            // If the process was killed by timeout, 'error.killed' will be true
+            if (error && error.killed) {
+                console.log("⚠️ Process killed due to timeout!");
+            }
             resolve(error ? stderr : stdout);
         });
     });
@@ -148,26 +154,40 @@ submissionQueue.process(async (job, done) => {
             }
             
             const startTime = process.hrtime();
-            await execShellCommand(command);
+            await execShellCommand(command,time_limit * 1000);
             const endTime = process.hrtime(startTime);
             const execution_time = (endTime[0] * 1000 + endTime[1] / 1e6) / 1000;
 
             // 4. Compare
+          // ... (after comparing files) ...
+
+            // 4. Compare
             const correctAnswer = await compareFiles(solution_file_path, output_file_path);
 
-            // Cleanup
-            [submission_file_path, input_file_path, solution_file_path, output_file_path, executable_file_path].forEach(f => {
-                if(fs.existsSync(f)) fs.unlinkSync(f);
+            // 🔴 FIX: Wait 100ms for Windows to release file locks
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // 🔴 FIX: Safe Cleanup (Try/Catch prevents crashes)
+            const filesToDelete = [
+                submission_file_path, 
+                input_file_path, 
+                solution_file_path, 
+                output_file_path, 
+                executable_file_path
+            ];
+
+            filesToDelete.forEach(file => {
+                try {
+                    if (fs.existsSync(file)) fs.unlinkSync(file);
+                } catch (err) {
+                    // Just log warning, don't crash the worker
+                    console.log(`⚠️ Warning: Could not delete ${path.basename(file)} (Locked by Windows)`);
+                }
             });
 
             const result = { compiled: true, time_limit, execution_time, correctAnswer };
             await updateSubmissionInDB(submission_id, result);
             
-            done(null, result);
-        } else {
-            console.log("❌ Compilation Failed");
-            const result = { compiled: false, time_limit, execution_time: 0, correctAnswer: false };
-            await updateSubmissionInDB(submission_id, result);
             done(null, result);
         }
 

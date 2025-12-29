@@ -298,6 +298,23 @@ o	Postman History: If you check GET /history now, that same submission will now 
 
 
 ```
+## 🛡️ Advanced: Experiencing the Sandbox (Security)
+
+The "Sandbox" prevents user code from crashing the server. To test this, try submitting these malicious/broken codes:
+
+### **1. The Infinite Loop (Availability Attack)**
+Submit this code to see how the system kills the process after the time limit.
+```cpp
+#include <iostream>
+using namespace std;
+int main() {
+    while(true) { 
+        // This runs forever
+    }
+    return 0;
+}
+```
+- Observation: The Worker logs ⚠️ Process killed due to timeout! and the verdict is TIME LIMIT EXCEEDED.
 ## 📌 Notes
 
 - MongoDB and Redis must be running
