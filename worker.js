@@ -1,53 +1,178 @@
 const mongoose = require("mongoose");
-const { jobQueue } = require("./utils/queue");
+const Queue = require("bull");
+const path = require("path");
+const fs = require("fs");
+const { exec } = require("child_process");
+const axios = require("axios");
+require("dotenv").config();
+
+// Models
 const Submission = require("./models/Submission");
 const Question = require("./models/Question");
-const { executeCpp } = require("./utils/executeCpp");
-const fs = require("fs");
-const path = require("path");
-const dotenv = require("dotenv");
 
-dotenv.config();
+// 1. Connect to MongoDB
+mongoose.connect(process.env.MONGO_URL)
+    .then(() => console.log("✅ Worker Connected to MongoDB"))
+    .catch((err) => console.error("❌ Worker Mongo Error:", err));
 
-// Connect to DB (Worker needs its own connection)
-mongoose.connect(process.env.MONGO_URL).then(() => {
-    console.log("Worker connected to MongoDB");
+// 2. Connect to Redis Queue
+const submissionQueue = new Queue("submissions", {
+    redis: { 
+        port: process.env.REDIS_PORT || 6379, 
+        host: process.env.REDIS_HOST || '127.0.0.1' 
+    },
 });
 
-jobQueue.process(async ({ data }) => {
-    const submissionId = data.id;
-    const submission = await Submission.findById(submissionId);
-    const question = await Question.findById(submission.question_id);
+console.log("🚀 Worker is running and waiting for jobs...");
 
-    if (!submission || !question) {
-        throw new Error("Missing Submission or Question Data");
+// --- CONFIGURATION ---
+const PROCESSING_DIR = path.resolve("./processing");
+if (!fs.existsSync(PROCESSING_DIR)) {
+    fs.mkdirSync(PROCESSING_DIR, { recursive: true });
+}
+
+// --- HELPER FUNCTIONS ---
+const execShellCommand = (cmd) => {
+    return new Promise((resolve) => {
+        exec(cmd, { maxBuffer: 1024 * 10000 }, (error, stdout, stderr) => {
+            resolve(error ? stderr : stdout);
+        });
+    });
+};
+
+const compareFiles = async (file_path1, file_path2) => {
+    try {
+        if (!fs.existsSync(file_path2)) return false;
+        const file1 = fs.readFileSync(file_path1, 'utf-8').trim().replace(/\r\n/g, '\n');
+        const file2 = fs.readFileSync(file_path2, 'utf-8').trim().replace(/\r\n/g, '\n');
+        return file1 === file2;
+    } catch (err) {
+        return false;
     }
+};
 
-    console.log(`Processing Job: ${submissionId}`);
+const downloadFile = (file, file_path, mode) => {
+    let data;
+    if (mode === "TEXT") {
+        data = file;
+    } else {
+        data = Buffer.from(file, "base64");
+    }
+    return new Promise((resolve, reject) => {
+        fs.writeFile(file_path, data, (err) => {
+            if (err) return reject(err);
+            return resolve();
+        });
+    });
+};
+
+const updateSubmissionInDB = async (submissionId, result) => {
+    const { execution_time, time_limit, compiled, correctAnswer } = result;
+    let status = "";
+    
+    if (!compiled) status = "COMPILATION ERROR";
+    else if (execution_time > time_limit) status = "TIME LIMIT EXCEEDED";
+    else if (!correctAnswer) status = "WRONG ANSWER";
+    else status = "ACCEPTED";
+
+    // Update the existing submission doc
+    await Submission.findByIdAndUpdate(submissionId, {
+        status: status,
+        execution_time: execution_time
+    });
+
+    // 🟢 LOG: Final Verdict
+    console.log(`📝 Verdict for ${submissionId}: ${status}`);
+};
+
+// --- WORKER LOGIC ---
+submissionQueue.process(async (job, done) => {
+    const { question_id, base64_encoded_data, submission_id } = job.data;
+    const jobId = job.id; 
+
+    // 🟢 LOG: Job Received
+    console.log(`\n---------------------------------------------------`);
+    console.log(`📥 Job Received: ID ${jobId} | Submission ${submission_id}`);
+
+    // Unique file names
+    const submission_file_path = path.join(PROCESSING_DIR, `sub_${jobId}.cpp`);
+    const input_file_path = path.join(PROCESSING_DIR, `input_${jobId}.txt`);
+    const solution_file_path = path.join(PROCESSING_DIR, `solution_${jobId}.txt`);
+    const output_file_path = path.join(PROCESSING_DIR, `output_${jobId}.txt`);
+    const executable_file_path = path.join(
+        PROCESSING_DIR, 
+        process.platform === 'win32' ? `a_${jobId}.exe` : `a_${jobId}.out`
+    );
 
     try {
-        // 1. Run the Code
-        // We assume submission.code is the file path or content. 
-        // If it's content, we saved it to a file in the controller.
+        // 🔴 ARTIFICIAL DELAY (Uncomment the next line to show Redis functionality)
+        // console.log("zzz... Worker Sleeping for 5 seconds...");
+        // await new Promise(resolve => setTimeout(resolve, 5000));
 
-        // Note: Adjust 'submission.code' logic based on how you saved it (path vs string)
-        // Assuming controller saved file path in 'code' field:
-        const userOutput = await executeCpp(submission.code, question.input_file);
+        const question = await Question.findById(question_id);
+        const { time_limit, solution_file, input_file } = question;
 
-        // 2. Read Expected Output
-        const expectedOutput = fs.readFileSync(question.solution_file, "utf-8");
+        // 1. Setup Files
+        await downloadFile(base64_encoded_data, submission_file_path, "BUFFER");
 
-        // 3. Compare (Trim whitespace to be safe)
-        if (userOutput.trim() === expectedOutput.trim()) {
-            submission.status = "Accepted";
+        if (input_file.startsWith("http")) {
+             const { data } = await axios.get(input_file);
+             await downloadFile(String(data), input_file_path, "TEXT");
         } else {
-            submission.status = "Wrong Answer";
+             fs.copyFileSync(path.resolve(input_file), input_file_path);
         }
-    } catch (err) {
-        console.error("Execution Error:", err);
-        submission.status = "Error"; // Or Compilation Error
-    }
 
-    await submission.save();
-    console.log(`Job Finished: ${submissionId} -> ${submission.status}`);
+        if (solution_file.startsWith("http")) {
+            const { data } = await axios.get(solution_file);
+            await downloadFile(String(data), solution_file_path, "TEXT");
+        } else {
+             fs.copyFileSync(path.resolve(solution_file), solution_file_path);
+        }
+
+        console.log("📂 Files Prepared.");
+
+        // 2. Compile
+        console.log("⚙️  Compiling...");
+        let compilation_errors = await execShellCommand(`g++ "${submission_file_path}" -o "${executable_file_path}"`);
+
+        if (!compilation_errors) {
+            console.log("✅ Compilation Successful.");
+            
+            // 3. Run
+            console.log("🚀 Running...");
+            let command;
+            if (process.platform === 'win32') {
+                command = `"${executable_file_path}" < "${input_file_path}" > "${output_file_path}"`;
+            } else {
+                command = `timeout ${time_limit + 1}s "${executable_file_path}" < "${input_file_path}" > "${output_file_path}"`;
+            }
+            
+            const startTime = process.hrtime();
+            await execShellCommand(command);
+            const endTime = process.hrtime(startTime);
+            const execution_time = (endTime[0] * 1000 + endTime[1] / 1e6) / 1000;
+
+            // 4. Compare
+            const correctAnswer = await compareFiles(solution_file_path, output_file_path);
+
+            // Cleanup
+            [submission_file_path, input_file_path, solution_file_path, output_file_path, executable_file_path].forEach(f => {
+                if(fs.existsSync(f)) fs.unlinkSync(f);
+            });
+
+            const result = { compiled: true, time_limit, execution_time, correctAnswer };
+            await updateSubmissionInDB(submission_id, result);
+            
+            done(null, result);
+        } else {
+            console.log("❌ Compilation Failed");
+            const result = { compiled: false, time_limit, execution_time: 0, correctAnswer: false };
+            await updateSubmissionInDB(submission_id, result);
+            done(null, result);
+        }
+
+    } catch (error) {
+        console.error("Worker Error:", error);
+        done(new Error(error.message));
+    }
 });

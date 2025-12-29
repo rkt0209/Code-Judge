@@ -257,21 +257,46 @@ Auth: Bearer Token (User Token)
 ```
 # ⚡ Advanced: Experiencing the Redis Queue
 ```
-By default, the API waits for the code to execute before responding (Synchronous). To demonstrate the power of the Non-Blocking Queue:
+You are asking a very sharp question about the system architecture.
+Currently, you are seeing ACCEPTED in Postman because your code is running in Synchronous Mode (Blocking). The API server is politely waiting for the Worker to finish before replying to you.
+To see the "Queued" message and the PENDING status, we must switch the API to Asynchronous Mode (Non-Blocking).
+Here is exactly what happens in both scenarios:
+Scenario 1: Current Setup (Synchronous / Blocking)
+•	Behavior: The API adds the job to the queue and pauses (await job.finished()). It waits until the Worker says "I'm done!"
+•	Postman Response: You wait 1-2 seconds, then get the final result:
+JSON
+{ "status": "ACCEPTED", "execution_time": 0.05 }
+•	Why use this? Good for simple sites where users want immediate feedback.
+Scenario 2: Heavy Load Setup (Asynchronous / Non-Blocking)
+•	Behavior: The API adds the job to the queue and replies immediately. It does NOT wait for the worker.
+•	Postman Response: You get an instant response (in milliseconds):
+JSON
+{
+    "message": "Submission Queued! We are processing it in the background.",
+    "status": "PENDING"
+}
+•	What happens to the Verdict? Since the worker hasn't finished yet, the status in the database is set to PENDING.
+•	How does the user see "ACCEPTED"? The user must check the History API (GET /history) a few seconds later. By then, the worker will have finished and updated the database from PENDING → ACCEPTED.
+________________________________________
+How to see the "Queued" & "PENDING" status right now
+To experience this, you need to swap the code in controllers/user/submission.js.
+1.	Open controllers/user/submission.js 2. Comment out the "Blocking" logic and Uncomment the "Non-Blocking" logic.
+2.	Now Uncomment the async function submitFile (there are two functions with same name),uncomment the one here working of redis queue is written
+3.	Now on submission the api will reply immediately without waiting the submission is queued.
+4.	After on worker terminal the output will displaced a  bit late based on the queue size.
+5.	After output display when you will check the submission history then it will show the actual result of compilation.
+6.	If you use the another function commenting this one the api will wait until execution I done, and as the output is displaced on worker terminal the response will be send on postman.
+The Experiment
+1.	Restart Server: npm run dev.
+2.	Restart Worker: node worker.js.
+3.	Postman: Send a submission.
+4.	Result:
+o	Postman immediately returns: "status": "PENDING".
+o	Terminal 2 (Worker) wakes up a moment later: Job Received... Compiled... Verdict: ACCEPTED.
+o	Postman History: If you check GET /history now, that same submission will now say "status": "ACCEPTED".
 
-Modify Code: Open controllers/user/submission.js.
 
-Uncomment the "Artificial Delay" block (sleep for 5s) inside the Worker i.e submissionqueue.process .
 
-Uncomment the function submitFile as mentioned there
-
-Run Test: Send lot of  submission via Postman.
-
-Observation:
-
-Postman: Returns "Submission Queued" instantly (milliseconds).
-
-Terminal: Shows 🚧 WORKER: Starting Job... and waits 5 seconds before finishing.
 ```
 ## 📌 Notes
 
