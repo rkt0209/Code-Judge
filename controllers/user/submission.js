@@ -3,67 +3,82 @@ const asyncHandler = require("../../middlewares/asyncHandler");
 const { exec } = require("child_process");
 const ErrorResponse = require("../../utils/ErrorResponse");
 const fs = require("fs");
+const path = require("path");
 const Question = require("../../models/Question");
 const axios = require("axios");
 const Queue = require("bull");
 const Submission = require("../../models/Submission");
-const submission_file_path = "./processing/sub.cpp";
-const executable_file_path = "./a.out";
-const input_file_path = "./input.txt";
-const solution_file_path = "./solution.txt";
-const output_file_path = "./output.txt";
+
+// --- CONFIGURATION ---
+// We use path.resolve to get the FULL Absolute Path (e.g., C:\Users\Rohit kumar\...)
+const submission_file_path = path.resolve("./processing/sub.cpp");
+// Windows needs .exe, Linux needs .out
+const executable_file_path = path.resolve(process.platform === 'win32' ? "./a.exe" : "./a.out");
+const input_file_path = path.resolve("./input.txt");
+const solution_file_path = path.resolve("./solution.txt");
+const output_file_path = path.resolve("./output.txt");
 
 const submissionQueue = new Queue("submissions", {
-    redis: { port: process.env.REDIS_PORT, host: process.env.REDIS_HOST },
+    redis: { port: process.env.REDIS_PORT || 6379, host: process.env.REDIS_HOST || '127.0.0.1' },
 });
 
-const deleteMultipleFiles = (listOfFiles) => {
-    return Promise.all(
-        listOfFiles.map((file) => {
-            return deleteFile(file);
-        })
-    );
-};
-
+// --- WORKER PROCESSOR ---
 submissionQueue.process(async (job, done) => {
     try {
-        const { question_id } = job.data;
+        const { question_id, base64_encoded_data } = job.data;
 
+        // 1. Prepare Files
         const question = await Question.findById(question_id);
-        const {
-            time_limit,
-            solution_file: solution_file_url,
-            input_file: input_file_url,
-        } = question;
+        const { time_limit, solution_file, input_file } = question;
 
-        const { base64_encoded_data: submission_file } = job.data;
+        // Save User Code
+        await downloadFile(base64_encoded_data, submission_file_path, "BUFFER");
 
-        const { data: input_file } = await axios.get(input_file_url);
-        const { data: solution_file } = await axios.get(solution_file_url);
+        // Save Input File
+        if (input_file.startsWith("http")) {
+             const { data: inputData } = await axios.get(input_file);
+             await downloadFile(String(inputData), input_file_path, "TEXT");
+        } else {
+             // Read from local uploads and write to processing path
+             // We handle the source path carefully too
+             const srcPath = path.resolve(input_file);
+             fs.copyFileSync(srcPath, input_file_path);
+        }
 
-        await downloadFile(String(input_file), input_file_path, "TEXT");
-        await downloadFile(String(solution_file), solution_file_path, "TEXT");
-        await downloadFile(submission_file, submission_file_path, "BUFFER");
+        // Save Solution File
+        if (solution_file.startsWith("http")) {
+            const { data: solData } = await axios.get(solution_file);
+            await downloadFile(String(solData), solution_file_path, "TEXT");
+        } else {
+             const srcPath = path.resolve(solution_file);
+             fs.copyFileSync(srcPath, solution_file_path);
+        }
 
-        let compilation_errors = await execShellCommand(
-            `g++ ${submission_file_path}`
-        );
+        // 2. Compile (Use Quotes for paths with spaces!)
+        // cmd: g++ "C:\Users\Rohit kumar\..." -o "C:\Users\Rohit kumar\..."
+        let compilation_errors = await execShellCommand(`g++ "${submission_file_path}" -o "${executable_file_path}"`);
 
         if (!compilation_errors) {
-            let execution_time = await execShellCommand(
-                `time timeout ${time_limit + 1}s ${executable_file_path}`
-            );
+            // 3. Execute
+            // We construct the command carefully for Windows CMD
+            // Format: "Executable" < "Input" > "Output"
+            
+            let command;
+            if (process.platform === 'win32') {
+                // Windows Command requires specific quoting for redirection to work with spaces
+                command = `"${executable_file_path}" < "${input_file_path}" > "${output_file_path}"`;
+            } else {
+                command = `timeout ${time_limit + 1}s "${executable_file_path}" < "${input_file_path}" > "${output_file_path}"`;
+            }
+            
+            // Run it
+            const startTime = process.hrtime();
+            await execShellCommand(command);
+            const endTime = process.hrtime(startTime);
+            const execution_time = (endTime[0] * 1000 + endTime[1] / 1e6) / 1000;
 
-            execution_time = Number(
-                execution_time.split("system 0:0")[1].split("e")[0]
-            );
-
-            const correctAnswer = await compareFiles(
-                solution_file_path,
-                output_file_path
-            );
-
-            await deleteMultipleFiles([submission_file_path, executable_file_path, input_file_path, solution_file_path, output_file_path]);
+            // 4. Compare Results
+            const correctAnswer = await compareFiles(solution_file_path, output_file_path);
 
             done(null, {
                 message: "Executed",
@@ -73,9 +88,6 @@ submissionQueue.process(async (job, done) => {
                 correctAnswer: correctAnswer,
             });
         } else {
-
-            await deleteMultipleFiles([submission_file_path, executable_file_path, input_file_path, solution_file_path, output_file_path]);
-
             done(null, {
                 message: "Compilation Error",
                 compiled: false,
@@ -85,26 +97,42 @@ submissionQueue.process(async (job, done) => {
             });
         }
     } catch (error) {
-        console.log("Error", error);
-        throw new ErrorResponse(error, 500);
+        console.log("Worker Error:", error);
+        done(new Error(error.message));
     }
 });
 
+// Helper: Run Shell Command
 const execShellCommand = (cmd) => {
     return new Promise((resolve, reject) => {
+        // We increase buffer size to avoid crashes on large outputs
         exec(cmd, { maxBuffer: 1024 * 10000 }, (error, stdout, stderr) => {
-            if (error) {
-                console.warn(error);
-            }
-            resolve(stdout ? stdout : stderr);
+            // Start listening!
+            resolve(error ? stderr : stdout);
         });
     });
 };
 
+// Helper: Compare Files (Ignores extra newlines/spaces)
 const compareFiles = async (file_path1, file_path2) => {
-    const command = `bash -c "diff <(tr -d '\r' <${file_path1}) <(tr -d '\r' <${file_path2})"`;
-    const difference = await execShellCommand(command);
-    return !difference;
+    try {
+        if (!fs.existsSync(file_path2)) return false;
+
+        // Read files and trim whitespace/newlines
+        const file1 = fs.readFileSync(file_path1, 'utf-8').trim().replace(/\r\n/g, '\n');
+        const file2 = fs.readFileSync(file_path2, 'utf-8').trim().replace(/\r\n/g, '\n');
+
+        console.log("--------------------------------");
+        console.log("DEBUG JUDGE:");
+        console.log("Solution:", JSON.stringify(file1));
+        console.log("User Out:", JSON.stringify(file2));
+        console.log("--------------------------------");
+
+        return file1 === file2;
+    } catch (err) {
+        console.log("Comparison Error:", err);
+        return false;
+    }
 };
 
 const downloadFile = (file, file_path, mode) => {
@@ -115,44 +143,19 @@ const downloadFile = (file, file_path, mode) => {
         data = Buffer.from(file, "base64");
     }
     return new Promise((resolve, reject) => {
-        fs.writeFile(file_path, data, (err) => {
-            if (err) {
-                return reject();
-            }
-            return resolve();
-        });
-    });
-};
+        // Ensure directory exists
+        const dir = path.dirname(file_path);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-const deleteFile = (file_path) => {
-    return new Promise((resolve, reject) => {
-        fs.unlink(file_path, (err) => {
-            if (err) {
-                reject();
-            }
+        fs.writeFile(file_path, data, (err) => {
+            if (err) return reject(err);
             return resolve();
         });
     });
 };
 
 exports.checkSubmitRequest = [
-    body("question_id").exists().withMessage("Question ID is Required").bail(),
-    body("question_id")
-        .isMongoId()
-        .withMessage("Question ID must be a valid Mongo ID")
-        .bail(),
-    body("question_id").custom(async (value, { req }) => {
-        const question_exists = await Question.findById(value);
-        if (!question_exists)
-            throw new ErrorResponse("No Such Question Exists");
-        return true;
-    }),
-    body().custom((value, { req }) => {
-        if (!req.files?.submission_file?.length) {
-            throw new ErrorResponse("Submission File is Required");
-        }
-        return true;
-    }),
+    body("question_id").exists().withMessage("Question ID is Required"),
 ];
 
 const createSubmissionDoc = asyncHandler(
@@ -180,10 +183,18 @@ const createSubmissionDoc = asyncHandler(
 );
 
 exports.submitFile = asyncHandler(async (req, res) => {
+    // Auth User
     const user_id = req.auth_user.static_id;
     const { question_id } = req.body;
-    const base64_encoded_data =
-        req.files.submission_file[0].buffer.toString("base64");
+
+    let base64_encoded_data;
+    if (req.files && req.files.submission_file) {
+        const file_path = req.files.submission_file[0].path;
+        const file_buffer = fs.readFileSync(file_path);
+        base64_encoded_data = file_buffer.toString("base64");
+    } else {
+        throw new ErrorResponse("Submission File Missing", 400);
+    }
 
     const job = await submissionQueue.add({ question_id, base64_encoded_data });
     const result = await job.finished();
@@ -194,7 +205,7 @@ exports.submitFile = asyncHandler(async (req, res) => {
         result);
 
     res.json({
-      message: "Solution Submitted Succesfully",
+      message: "Submitted Successfully", // Fixed Typo
       results: submission_doc
     });
 });

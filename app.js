@@ -5,6 +5,7 @@ const errorHandler = require("./middlewares/errorHandler")
 const dbConnect = require("./db/connect");
 require("dotenv").config();
 
+
 app.use(cors({
   origin: "http://127.0.0.1:3030"
 }));

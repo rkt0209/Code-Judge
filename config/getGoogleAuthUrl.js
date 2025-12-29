@@ -1,36 +1,35 @@
-require("dotenv").config();
-
 const { google } = require("googleapis");
 
-const oauth2ClientAdmin = new google.auth.OAuth2(
-  process.env.OAUTH_CLIENT_ID,
-  process.env.CLIENT_SECRET,
-  process.env.ADMIN_AUTH_REDIRECT_URI
-);
-const oauth2ClientUser = new google.auth.OAuth2(
-  process.env.OAUTH_CLIENT_ID,
-  process.env.CLIENT_SECRET,
-  process.env.USER_AUTH_REDIRECT_URI
-);
-
-const scopes = ["email", "profile"];
-
-exports.getAdminURL = () => {
-  const authorizationUrl = oauth2ClientAdmin.generateAuthUrl({
+const getAdminURL = () => {
+  const rootUrl = "https://accounts.google.com/o/oauth2/v2/auth";
+  const options = {
+    redirect_uri: process.env.ADMIN_REDIRECT_URI,
+    client_id: process.env.GOOGLE_CLIENT_ID,
     access_type: "offline",
-    scope: scopes,
-    include_granted_scopes: true,
-  });
-
-  return authorizationUrl;
+    response_type: "code",
+    prompt: "consent",
+    scope: [
+      "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/userinfo.email",
+    ].join(" "),
+  };
+  return `${rootUrl}?${new URLSearchParams(options).toString()}`;
 };
 
-exports.getUserURL = () => {
-  const authorizationUrl = oauth2ClientUser.generateAuthUrl({
+const getUserURL = () => {
+  const rootUrl = "https://accounts.google.com/o/oauth2/v2/auth";
+  const options = {
+    redirect_uri: process.env.USER_REDIRECT_URI,
+    client_id: process.env.GOOGLE_CLIENT_ID,
     access_type: "offline",
-    scope: scopes,
-    include_granted_scopes: true,
-  });
-
-  return authorizationUrl;
+    response_type: "code",
+    prompt: "consent",
+    scope: [
+      "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/userinfo.email",
+    ].join(" "),
+  };
+  return `${rootUrl}?${new URLSearchParams(options).toString()}`;
 };
+
+module.exports = { getAdminURL, getUserURL };

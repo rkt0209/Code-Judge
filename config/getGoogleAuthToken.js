@@ -1,124 +1,87 @@
+const { google } = require("googleapis");
+const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Admin = require("../models/Admin");
-const generateJwtToken = require("../config/generateJWT");
-const ErrorResponse = require("../utils/ErrorResponse");
-const axios = require("axios");
 const asyncHandler = require("../middlewares/asyncHandler");
-const { dataform_v1beta1 } = require("googleapis");
-require("dotenv").config();
 
-exports.adminRegisterLogin = asyncHandler(async (req, res) => {
-  const url = "https://oauth2.googleapis.com/token";
-  const values = {
-    code: req.query.code,
-    client_id: process.env.OAUTH_CLIENT_ID,
-    client_secret: process.env.OAUTH_CLIENT_SECRET,
-    redirect_uri: `${process.env.API_URI}/admin/auth/redirect`,
-    grant_type: "authorization_code",
-  };
+// Helper to get Google User Data
+const getGoogleUser = async ({ code, redirect_uri }) => {
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    redirect_uri
+  );
 
-  const qs = new URLSearchParams(values);
+  const { tokens } = await oauth2Client.getToken(code);
+  oauth2Client.setCredentials(tokens);
 
-  const { id_token, access_token } = await axios
-    .post(url, qs.toString(), {
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    })
-    .then((res) => res.data)
-    .catch((error) => {
-      return res.json({ message: error.message });
-    });
+  const { data } = await google.oauth2("v2").userinfo.get({ auth: oauth2Client });
+  return data; // contains email, name, picture
+};
 
-  const googleUser = await axios
-    .get(
-      `https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=${access_token}`,
-      {
-        headers: {
-          Authorization: `Bearer ${id_token}`,
-        },
-      }
-    )
-    .then((res) => res.data)
-    .catch((error) => {
-      return res.json({ message: error.message });
-    });
-
-  const admin_exist = await Admin.findOne({ email: googleUser.email });
-
-  if (admin_exist) {
-    const token = generateJwtToken({ id: admin_exist._id });
-
-    return res.json({ message: "Admin Logged in", data: token });
-  }
-
-  const admin = await Admin.create({
-    name: googleUser.name,
-    handle: googleUser.given_name
-      ? googleUser.given_name + Date.now()
-      : googleUser.name.split(" ").join("_") + Date.now(),
-    email: googleUser.email,
+// 1. User Login/Register
+exports.userRegisterLogin = asyncHandler(async (req, res) => {
+  const code = req.query.code;
+  const googleUser = await getGoogleUser({ 
+      code, 
+      redirect_uri: process.env.USER_REDIRECT_URI 
   });
 
-  const token = generateJwtToken({ id: admin._id });
+  let user = await User.findOne({ email: googleUser.email });
 
-  return res.json({ message: "Admin Registered", data: token });
+  if (!user) {
+    // THIS FIXES YOUR ERROR: Auto-generate a handle
+    const randomHandle = googleUser.given_name.replace(/\s/g, "") + Math.floor(Math.random() * 10000);
+    
+    user = await User.create({
+      name: googleUser.name,
+      email: googleUser.email,
+      profile_pic: googleUser.picture,
+      handle: randomHandle, // <--- Required field now exists!
+      rating: 100,
+    });
+  }
+
+  // Create Token
+  const token = jwt.sign({ id: user._id, role: "user" }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE,
+  });
+
+  // Redirect to Frontend (or just show JSON for now)
+  // Since you don't have a frontend, we just print the token
+  res.status(200).json({
+    message: "Login Successful",
+    token: token,
+    user: user
+  });
 });
 
-exports.userRegisterLogin = asyncHandler(async (req, res) => {
-  const url = "https://oauth2.googleapis.com/token";
-  const values = {
-    code: req.query.code,
-    client_id: process.env.OAUTH_CLIENT_ID,
-    client_secret: process.env.OAUTH_CLIENT_SECRET,
-    redirect_uri: `${process.env.API_URI}/user/auth/redirect`,
-    grant_type: "authorization_code",
-  };
-
-  const qs = new URLSearchParams(values);
-
-  const { id_token, access_token } = await axios
-    .post(url, qs.toString(), {
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    })
-    .then((res) => res.data)
-    .catch((error) => {
-      return res.json({ message: error.message });
-    });
-
-  const googleUser = await axios
-    .get(
-      `https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=${access_token}`,
-      {
-        headers: {
-          Authorization: `Bearer ${id_token}`,
-        },
-      }
-    )
-    .then((res) => res.data)
-    .catch((error) => {
-      return res.json({ message: error.message });
-    });
-
-  const user_exist = await User.findOne({ email: googleUser.email });
-
-  if (user_exist) {
-    const token = generateJwtToken({ id: user_exist._id });
-
-    return res.json({ message: "User Logged in", data: token });
-  }
-
-  const user = await User.create({
-    name: googleUser.name,
-    handle: googleUser.given_name
-      ? googleUser.given_name + Date.now()
-      : googleUser.name.split(" ").join("_") + Date.now(),
-    email: googleUser.email,
+// 2. Admin Login/Register
+exports.adminRegisterLogin = asyncHandler(async (req, res) => {
+  const code = req.query.code;
+  const googleUser = await getGoogleUser({ 
+      code, 
+      redirect_uri: process.env.ADMIN_REDIRECT_URI 
   });
 
-  const token = generateJwtToken({ id: user._id });
+  let admin = await Admin.findOne({ email: googleUser.email });
 
-  return res.json({ message: "User Registered", data: token });
+  if (!admin) {
+     const randomHandle = "admin_" + Math.floor(Math.random() * 10000);
+     admin = await Admin.create({
+      name: googleUser.name,
+      email: googleUser.email,
+      handle: randomHandle,
+    });
+  }
+
+  const token = jwt.sign({ id: admin._id, role: "admin" }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE,
+  });
+
+  res.status(200).json({
+    message: "Admin Login Successful",
+    token: token,
+    data: admin
+  });
 });
