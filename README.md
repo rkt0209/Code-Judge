@@ -40,11 +40,29 @@ Make sure these are installed on your machine:
 - Redis
 - G++ Compiler
 
-Check Redis:
+### Step 0: Install & Start Redis (CRITICAL)
+This project **requires** Redis to manage the job queue. Without it, the worker cannot function.
 
-```
-redis-cli ping
-```
+* **For Windows:**
+    1.  Download the **Windows Installer (.msi)** from [Memurai (Redis for Windows)](https://www.memurai.com/get-memurai) or use WSL.
+    2.  Run the installer and finish the setup.
+    3.  Open Task Manager > Services and ensure `Memurai` or `Redis` is **Running**.
+* **For Mac/Linux:**
+    ```bash
+    # Mac
+    brew install redis
+    brew services start redis
+    
+    # Linux
+    sudo apt install redis-server
+    sudo service redis-server start
+    ```
+* **Verify it works:**
+    Open a terminal and type:
+    ```bash
+    redis-cli ping
+    # It must reply: PONG
+    ```
 
 ---
 
