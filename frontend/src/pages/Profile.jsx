@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { CheckCircle2, XCircle, Timer, Activity } from 'lucide-react';
 
 export const Profile = ({ onAuthClick }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, role } = useAuth();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -60,7 +60,7 @@ export const Profile = ({ onAuthClick }) => {
 
   return (
     <div className="app-shell profile-shell">
-      <Sidebar active="profile" showFilters={false} />
+      <Sidebar active="profile" showFilters={false} role={role} />
 
       <main className="content-area profile-page">
         <div className="content-header">

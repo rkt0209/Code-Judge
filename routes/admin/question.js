@@ -22,7 +22,8 @@ router.post(
   // 3. Third: Handle File Uploads
   upload.fields([
     { name: "input_file", maxCount: 1 },
-    { name: "solution_file", maxCount: 1 }
+    { name: "solution_file", maxCount: 1 },
+    { name: "content_file", maxCount: 1 }
   ]),
   
   // 4. Finally: Run the Controller

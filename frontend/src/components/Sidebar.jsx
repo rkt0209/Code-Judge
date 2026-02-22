@@ -1,4 +1,4 @@
-import { Search, SlidersHorizontal, Trophy, Home } from 'lucide-react';
+import { Search, SlidersHorizontal, Trophy, Home, PlusSquare, Users, LayoutGrid } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const Sidebar = ({
@@ -7,7 +7,8 @@ export const Sidebar = ({
   onSearchChange,
   difficulty = 'all',
   onDifficultyChange,
-  showFilters = true
+  showFilters = true,
+  role = 'user'
 }) => {
   return (
     <aside className="sidebar">
@@ -21,11 +22,29 @@ export const Sidebar = ({
           <Home size={16} />
           Home
         </Link>
-        <button className="nav-item" type="button" disabled>
-          <Trophy size={16} />
-          Contests
-          <span className="nav-tag">Soon</span>
-        </button>
+        {role === 'admin' && (
+          <>
+            <Link to="/admin/add-question" className={`nav-item ${active === 'add-question' ? 'active' : ''}`}>
+              <PlusSquare size={16} />
+              Add Question
+            </Link>
+            <Link to="/admin/activity" className={`nav-item ${active === 'activity' ? 'active' : ''}`}>
+              <Users size={16} />
+              User Activity
+            </Link>
+            <Link to="/admin/contests" className={`nav-item ${active === 'contests' ? 'active' : ''}`}>
+              <LayoutGrid size={16} />
+              Create Contests
+            </Link>
+          </>
+        )}
+        {role !== 'admin' && (
+          <button className="nav-item" type="button" disabled>
+            <Trophy size={16} />
+            Contests
+            <span className="nav-tag">Soon</span>
+          </button>
+        )}
       </nav>
 
       {showFilters && (

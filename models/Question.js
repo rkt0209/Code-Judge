@@ -9,7 +9,19 @@ const QuestionSchema = mongoose.Schema(
     },
     content: {
       type: String,
-      required: true,
+      default: "",
+    },
+    content_file: {
+      type: String,
+      default: "",
+    },
+    tags: {
+      type: [String],
+      default: [],
+    },
+    difficulty: {
+      type: String,
+      default: "medium",
     },
     solution_file: {
       type: String,

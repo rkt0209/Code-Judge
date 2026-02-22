@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BookOpen, Clock, SignalHigh } from 'lucide-react';
 import { questionsAPI } from '../services/api';
 import { Sidebar } from '../components/Sidebar';
+import { useAuth } from '../context/AuthContext';
 
 const difficultyRank = {
   easy: 1,
@@ -11,6 +12,7 @@ const difficultyRank = {
 };
 
 export const Home = () => {
+  const { role } = useAuth();
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -61,6 +63,7 @@ export const Home = () => {
         onSearchChange={setSearchTerm}
         difficulty={difficulty}
         onDifficultyChange={setDifficulty}
+        role={role}
       />
 
       <main className="content-area">

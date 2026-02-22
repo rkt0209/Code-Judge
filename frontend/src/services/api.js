@@ -50,6 +50,27 @@ export const submissionAPI = {
   getSubmissionHistory: () => apiClient.get('/user/submission/history'),
 };
 
+export const adminAPI = {
+  getMyProfile: () => apiClient.get('/admin/profile/my'),
+  createQuestion: (payload) => {
+    const formData = new FormData();
+    formData.append('title', payload.title);
+    formData.append('content', payload.content || '');
+    formData.append('tags', payload.tags || '');
+    formData.append('time_limit', payload.time_limit || 1);
+    formData.append('difficulty', payload.difficulty || 'medium');
+    formData.append('input_file', payload.input_file);
+    formData.append('solution_file', payload.solution_file);
+    formData.append('content_file', payload.content_file);
+
+    return apiClient.post('/admin/question/create', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  }
+};
+
 export const profileAPI = {
   getUserProfile: (handle) => apiClient.get(`/user/profile/handle/${handle}`),
   getAllUsers: () => apiClient.get('/user/profile/all'),

@@ -5,11 +5,17 @@ import { AuthModal } from './components/AuthModal';
 import { Home } from './pages/Home';
 import { QuestionPage } from './pages/QuestionPage';
 import { Profile } from './pages/Profile';
+import { AdminProfile } from './pages/AdminProfile';
+import { AdminAddQuestion } from './pages/AdminAddQuestion';
+import { AdminActivity } from './pages/AdminActivity';
+import { AdminContests } from './pages/AdminContests';
 import { AuthCallback } from './pages/AuthCallback';
+import { useAuth } from './context/AuthContext';
 import './styles/global.css';
 
 function AppLayout() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const { role } = useAuth();
 
   const openAuthModal = () => setAuthModalOpen(true);
   const closeAuthModal = () => setAuthModalOpen(false);
@@ -21,7 +27,13 @@ function AppLayout() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/questions/:questionId" element={<QuestionPage onAuthClick={openAuthModal} />} />
-        <Route path="/profile" element={<Profile onAuthClick={openAuthModal} />} />
+        <Route
+          path="/profile"
+          element={role === 'admin' ? <AdminProfile onAuthClick={openAuthModal} /> : <Profile onAuthClick={openAuthModal} />}
+        />
+        <Route path="/admin/add-question" element={<AdminAddQuestion onAuthClick={openAuthModal} />} />
+        <Route path="/admin/activity" element={<AdminActivity onAuthClick={openAuthModal} />} />
+        <Route path="/admin/contests" element={<AdminContests onAuthClick={openAuthModal} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
