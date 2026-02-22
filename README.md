@@ -332,12 +332,235 @@ Instead of running services manually, you can spin up the entire ecosystem (Mong
     ```
 3.  **Access:** The API is now running at `http://localhost:5000`.
     * *Note: Code execution happens inside the Linux container, ensuring a consistent environment.*
-    
+
+---
+
+# 🎨 Frontend Setup
+
+The frontend is a modern React application with Vite. It provides an interactive dashboard for users to view questions and submit code.
+
+## 📦 Frontend Features
+
+- 📝 Browse all available coding problems
+- 🔐 Google OAuth authentication (User & Admin)
+- 💻 Live code editor with C++ syntax support
+- ⚡ Real-time submission results
+- 📊 Submission history tracking
+- 🎯 Responsive design for all devices
+- 🔑 Automatic JWT token management
+
+## ▶️ Running the Frontend
+
+### 1. Navigate to Frontend Directory
+```bash
+cd frontend
+```
+
+### 2. Install Dependencies
+```bash
+npm install
+```
+
+### 3. Start Development Server
+```bash
+npm run dev
+```
+
+The frontend will be available at `http://localhost:3030`
+
+**Important:** Make sure the backend is running on `http://localhost:5000` before starting the frontend!
+
+## 📸 Frontend Workflow
+
+### Landing Page
+- Welcome screen with "Sign In" button
+- User chooses to sign in as **User** or **Admin**
+
+### After Authentication
+1. **Dashboard** displays all available questions
+2. **Left Panel**: Question list with difficulty badges and time limits
+3. **Right Panel**: 
+   - Question details on top
+   - Code editor below
+   - Results displayed after submission
+
+### Code Submission Flow
+```
+1. User selects a question
+2. Writes C++ solution in the editor
+3. Clicks "Submit" button
+4. Frontend converts code to .cpp file
+5. Sends to API endpoint /api/user/submission
+6. Results displayed:
+   - ACCEPTED ✅
+   - WRONG ANSWER ❌
+   - COMPILATION ERROR ⚠️
+   - TIME LIMIT EXCEEDED ⏱️
+```
+
+## 🗂️ Frontend Project Structure
+
+```
+frontend/
+├── src/
+│   ├── components/
+│   │   ├── Navbar.jsx        # Top navigation bar
+│   │   └── AuthModal.jsx     # Sign in modal window
+│   ├── context/
+│   │   └── AuthContext.jsx   # Global auth state management
+│   ├── pages/
+│   │   └── Dashboard.jsx     # Main dashboard with editor
+│   ├── services/
+│   │   └── api.js            # API client with axios
+│   ├── styles/
+│   │   └── global.css        # All styling
+│   ├── App.jsx               # Main app component
+│   └── main.jsx              # React entry point
+├── index.html                # HTML template
+├── vite.config.js            # Vite configuration
+└── package.json              # Dependencies
+```
+
+## 🔐 Authentication Details
+
+### How Token Storage Works
+1. User clicks "Sign In"
+2. Redirected to Google OAuth
+3. Backend exchanges code for JWT token
+4. Token stored in browser localStorage
+5. Frontend automatically adds token to all API requests
+6. **No manual token copy-paste needed!** ✨
+
+### Logout
+- Click logout button to clear token and return to landing page
+- All localStorage data is removed
+
+## 🎯 API Integration
+
+Frontend communicates with these backend endpoints:
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/user/questions` | GET | Fetch all questions |
+| `/user/questions/:id` | GET | Get question details |
+| `/user/submission` | POST | Submit code for evaluation |
+| `/user/submission/history` | GET | View submission history |
+| `/user/auth` | GET | OAuth flow for users |
+| `/admin/auth` | GET | OAuth flow for admins |
+
+## 🚀 Building for Production
+
+### Build the Frontend
+```bash
+npm run build
+```
+
+Output goes to `dist/` folder
+
+### Preview Production Build
+```bash
+npm run preview
+```
+
+## 🎨 Customization
+
+### Change Colors
+Edit `src/styles/global.css` and modify CSS variables:
+
+```css
+:root {
+  --primary: #3b82f6;      /* Change primary color */
+  --secondary: #10b981;    /* Change secondary color */
+  --danger: #ef4444;       /* Change danger color */
+}
+```
+
+### Modify Editor Theme
+Edit the `code-editor` class in `global.css` for different color schemes.
+
+### Add New Features
+- Components go in `src/components/`
+- New pages go in `src/pages/`
+- API calls use `src/services/api.js`
+- State management with React Context in `src/context/`
+
+## 🌐 CORS Configuration
+
+Frontend runs on `http://localhost:3030` and backend on `http://localhost:5000`.
+
+**Important:** Backend must have CORS enabled for `http://127.0.0.1:3030` in `app.js`:
+
+```javascript
+app.use(cors({
+  origin: "http://127.0.0.1:3030"
+}));
+```
+
+If you see CORS errors, verify this configuration!
+
+## 🔗 Full Stack Running Together
+
+### Terminal 1: Backend Server
+```bash
+npm run dev
+```
+
+### Terminal 2: Worker Process
+```bash
+node worker.js
+```
+
+### Terminal 3: Frontend
+```bash
+cd frontend
+npm run dev
+```
+
+All services working together! 🎉
+
+## 📱 Mobile Responsiveness
+
+The frontend is fully responsive:
+- **Desktop** (1024px+): Two-column layout with question list and editor
+- **Tablet** (760px-1024px): Stacked layout
+- **Mobile** (< 760px): Full-width components with optimized spacing
+
+## 🐛 Common Issues
+
+### Frontend can't connect to backend
+- Ensure backend is running on `http://localhost:5000`
+- Check CORS settings in backend `app.js`
+- Clear browser cache and localStorage
+
+### OAuth redirect not working
+- Verify Google Client ID and Secret in backend `.env`
+- Check redirect URIs match in Google Console
+- Ensure backend is accessible from browser
+
+### Code submission fails
+- Check JWT token in browser DevTools > Application > LocalStorage
+- Verify backend worker is running
+- Check API endpoint returns 200 status
+
+## 💡 Tips
+
+- Use browser DevTools to inspect network requests
+- Check localStorage (`JSON.parse(localStorage.getItem('user_data'))`)
+- Monitor browser console for error messages
+- Use backend logs to debug submissions
+
+---
+
 ## 🚀 Future Plans
 
- 
-- Multi-language support  
-- Admin dashboard UI  
+- Multi-language support (Python, Java, JavaScript, etc.)
+- Admin dashboard for creating and managing questions
+- Advanced code editor with syntax highlighting (Monaco/Prism)
+- Leaderboard and user rating system
+- Contest management and live scoring
+- Dark mode theme
+- Search and filter questions
+- Submission statistics and analytics
 
 ---
 

@@ -47,13 +47,19 @@ exports.userRegisterLogin = asyncHandler(async (req, res) => {
     expiresIn: process.env.JWT_EXPIRE,
   });
 
-  // Redirect to Frontend (or just show JSON for now)
-  // Since you don't have a frontend, we just print the token
-  res.status(200).json({
-    message: "Login Successful",
-    token: token,
-    user: user
-  });
+  // Redirect to Frontend Callback with token and user data
+  const frontendCallbackUrl = new URL('http://localhost:3030/auth/callback');
+  frontendCallbackUrl.searchParams.append('token', token);
+  frontendCallbackUrl.searchParams.append('role', 'user');
+  frontendCallbackUrl.searchParams.append('user', JSON.stringify({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    handle: user.handle,
+    profile_pic: user.profile_pic
+  }));
+  
+  res.redirect(frontendCallbackUrl.toString());
 });
 
 // 2. Admin Login/Register
@@ -79,9 +85,16 @@ exports.adminRegisterLogin = asyncHandler(async (req, res) => {
     expiresIn: process.env.JWT_EXPIRE,
   });
 
-  res.status(200).json({
-    message: "Admin Login Successful",
-    token: token,
-    data: admin
-  });
+  // Redirect to Frontend Callback with token and admin data
+  const frontendCallbackUrl = new URL('http://localhost:3030/auth/callback');
+  frontendCallbackUrl.searchParams.append('token', token);
+  frontendCallbackUrl.searchParams.append('role', 'admin');
+  frontendCallbackUrl.searchParams.append('user', JSON.stringify({
+    _id: admin._id,
+    name: admin.name,
+    email: admin.email,
+    handle: admin.handle
+  }));
+  
+  res.redirect(frontendCallbackUrl.toString());
 });

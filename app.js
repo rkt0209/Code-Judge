@@ -11,7 +11,7 @@ const adminQuestionRoutes = require("./routes/admin/question");
 app.use("/api/admin/questions", adminQuestionRoutes);
 
 app.use(cors({
-  origin: "http://127.0.0.1:3030"
+  origin: ["http://localhost:3030", "http://127.0.0.1:3030"]
 }));
 
 app.use(express.json());

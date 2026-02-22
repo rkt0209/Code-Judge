@@ -37,11 +37,11 @@ const execShellCommand = (cmd, timeoutLimit = 0) => {
     return new Promise((resolve) => {
         // We pass 'timeout' (in milliseconds) to exec options
         exec(cmd, { maxBuffer: 1024 * 10000, timeout: timeoutLimit }, (error, stdout, stderr) => {
-            // If the process was killed by timeout, 'error.killed' will be true
-            if (error && error.killed) {
+            const timedOut = !!(error && error.killed);
+            if (timedOut) {
                 console.log("⚠️ Process killed due to timeout!");
             }
-            resolve(error ? stderr : stdout);
+            resolve({ stdout, stderr, error, timedOut });
         });
     });
 };
@@ -137,45 +137,16 @@ submissionQueue.process(async (job, done) => {
 
         console.log("📂 Files Prepared.");
 
-        // 2. Compile
-        console.log("⚙️  Compiling...");
-        let compilation_errors = await execShellCommand(`g++ "${submission_file_path}" -o "${executable_file_path}"`);
-
-        if (!compilation_errors) {
-            console.log("✅ Compilation Successful.");
-            
-            // 3. Run
-            console.log("🚀 Running...");
-            let command;
-            if (process.platform === 'win32') {
-                command = `"${executable_file_path}" < "${input_file_path}" > "${output_file_path}"`;
-            } else {
-                command = `timeout ${time_limit + 1}s "${executable_file_path}" < "${input_file_path}" > "${output_file_path}"`;
-            }
-            
-            const startTime = process.hrtime();
-            await execShellCommand(command,time_limit * 1000);
-            const endTime = process.hrtime(startTime);
-            const execution_time = (endTime[0] * 1000 + endTime[1] / 1e6) / 1000;
-
-            // 4. Compare
-          // ... (after comparing files) ...
-
-            // 4. Compare
-            const correctAnswer = await compareFiles(solution_file_path, output_file_path);
-
+        const cleanupFiles = async () => {
             // 🔴 FIX: Wait 100ms for Windows to release file locks
             await new Promise(resolve => setTimeout(resolve, 100));
-
-            // 🔴 FIX: Safe Cleanup (Try/Catch prevents crashes)
             const filesToDelete = [
-                submission_file_path, 
-                input_file_path, 
-                solution_file_path, 
-                output_file_path, 
+                submission_file_path,
+                input_file_path,
+                solution_file_path,
+                output_file_path,
                 executable_file_path
             ];
-
             filesToDelete.forEach(file => {
                 try {
                     if (fs.existsSync(file)) fs.unlinkSync(file);
@@ -184,12 +155,63 @@ submissionQueue.process(async (job, done) => {
                     console.log(`⚠️ Warning: Could not delete ${path.basename(file)} (Locked by Windows)`);
                 }
             });
+        };
 
-            const result = { compiled: true, time_limit, execution_time, correctAnswer };
+        // 2. Compile
+        console.log("⚙️  Compiling...");
+        const compileResult = await execShellCommand(`g++ "${submission_file_path}" -o "${executable_file_path}"`);
+
+        if (compileResult.error) {
+            const result = {
+                compiled: false,
+                time_limit,
+                execution_time: 0,
+                correctAnswer: false
+            };
             await updateSubmissionInDB(submission_id, result);
-            
+            await cleanupFiles();
             done(null, result);
+            return;
         }
+
+        console.log("✅ Compilation Successful.");
+
+        // 3. Run
+        console.log("🚀 Running...");
+        let command;
+        if (process.platform === 'win32') {
+            command = `"${executable_file_path}" < "${input_file_path}" > "${output_file_path}"`;
+        } else {
+            command = `timeout ${time_limit + 1}s "${executable_file_path}" < "${input_file_path}" > "${output_file_path}"`;
+        }
+
+        const startTime = process.hrtime();
+        const runResult = await execShellCommand(command, time_limit * 1000);
+        const endTime = process.hrtime(startTime);
+        const execution_time = (endTime[0] * 1000 + endTime[1] / 1e6) / 1000;
+
+        if (runResult.timedOut) {
+            const result = {
+                compiled: true,
+                time_limit,
+                execution_time: execution_time,
+                correctAnswer: false
+            };
+            await updateSubmissionInDB(submission_id, result);
+            await cleanupFiles();
+            done(null, result);
+            return;
+        }
+
+        // 4. Compare
+        const correctAnswer = await compareFiles(solution_file_path, output_file_path);
+
+        await cleanupFiles();
+
+        const result = { compiled: true, time_limit, execution_time, correctAnswer };
+        await updateSubmissionInDB(submission_id, result);
+
+        done(null, result);
 
     } catch (error) {
         console.error("Worker Error:", error);
