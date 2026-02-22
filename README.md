@@ -199,7 +199,43 @@ solution_file: [Select a text file containing 30]
 ```
 - Response: Copies the _id of the created question.
 
-# Step 2: User - Submit a Solution
+# Step 2: User - View All Available Questions
+
+- Endpoint: GET /api/user/questions
+
+- Auth: **No authentication required**
+
+- Response Example:
+```json
+{
+  "message": "Questions Fetched Successfully",
+  "count": 2,
+  "data": [
+    {
+      "_id": "507f1f77bcf86cd799439011",
+      "title": "Sum of Two Numbers",
+      "content": "Read two integers and print their sum.",
+      "time_limit": 2,
+      "difficulty": "easy",
+      "createdAt": "2026-02-22T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+# Step 3: User - View a Specific Question
+
+- Endpoint: GET /api/user/questions/:question_id
+
+- Auth: **No authentication required**
+
+- Response: Returns the question with full description.
+
+---
+
+# Step 4: User - Submit a Solution
 
 - Endpoint: POST /api/user/submission
 
@@ -214,7 +250,7 @@ submission_file: [Select your C++ file]
 - Result: The server will return ACCEPTED if your code matches the solution.
 
 
-# Step 3: User - View Submission History
+# Step 5: User - View Submission History
 ```
 Endpoint: GET /api/user/submission/history
 
