@@ -1,50 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { AuthModal } from './components/AuthModal';
-import { Dashboard } from './pages/Dashboard';
+import { Home } from './pages/Home';
+import { QuestionPage } from './pages/QuestionPage';
+import { Profile } from './pages/Profile';
 import { AuthCallback } from './pages/AuthCallback';
 import './styles/global.css';
 
-function AppContent() {
+function AppLayout() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [selectedQuestion, setSelectedQuestion] = useState(null);
-  const { isAuthenticated } = useAuth();
+
+  const openAuthModal = () => setAuthModalOpen(true);
+  const closeAuthModal = () => setAuthModalOpen(false);
 
   return (
-    <div>
-      <Navbar onAuthClick={() => setAuthModalOpen(true)} />
-      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
-      
-      {isAuthenticated ? (
-        <Dashboard 
-          selectedQuestion={selectedQuestion}
-          onSelectQuestion={setSelectedQuestion}
-        />
-      ) : (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: 'calc(100vh - 70px)',
-          textAlign: 'center'
-        }}>
-          <div>
-            <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Welcome to Code Judge</h1>
-            <p style={{ fontSize: '1.125rem', color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-              A secure online judge platform for coding contests
-            </p>
-            <button 
-              className="btn btn-primary"
-              onClick={() => setAuthModalOpen(true)}
-              style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}
-            >
-              Get Started - Sign In
-            </button>
-          </div>
-        </div>
-      )}
+    <div className="app-root">
+      <Navbar onAuthClick={openAuthModal} />
+      <AuthModal isOpen={authModalOpen} onClose={closeAuthModal} />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/questions/:questionId" element={<QuestionPage onAuthClick={openAuthModal} />} />
+        <Route path="/profile" element={<Profile onAuthClick={openAuthModal} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 }
@@ -54,7 +33,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/" element={<AppContent />} />
+        <Route path="/*" element={<AppLayout />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
