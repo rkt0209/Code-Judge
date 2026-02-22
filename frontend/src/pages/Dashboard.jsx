@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { questionsAPI, submissionAPI } from '../services/api';
 import { AlertCircle, BookOpen } from 'lucide-react';
 
@@ -87,7 +89,11 @@ export const Dashboard = ({ selectedQuestion, onSelectQuestion }) => {
         <div className="question-detail">
           <div className="question-panel">
             <h2 className="question-title-main">{selectedQuestion.title}</h2>
-            <div className="question-description">{selectedQuestion.content}</div>
+            <div className="question-description markdown-content">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {selectedQuestion.content}
+              </ReactMarkdown>
+            </div>
             
             <div className="question-info">
               <div className="info-item">

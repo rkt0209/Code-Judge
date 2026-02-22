@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Clock, FileText } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { questionsAPI, submissionAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -54,12 +56,19 @@ int main() {
 
     try {
       setSubmitting(true);
+      setResult(null); // Clear previous result
       const blob = new Blob([code], { type: 'text/plain' });
       const file = new File([blob], 'solution.cpp', { type: 'text/plain' });
+      console.log('Submitting code for question:', questionId);
+      console.log('File created:', file.name, file.size, 'bytes');
       const response = await submissionAPI.submitCode(questionId, file);
+      console.log('Submission response:', response.data);
       setResult(response.data.results);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to submit code');
+      console.error('Submission error:', err);
+      console.error('Error response:', err.response);
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || 'Failed to submit code';
+      alert(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -90,28 +99,36 @@ int main() {
       {question && (
         <div className="question-split">
           <section className="question-left">
-            <h1>{question.title}</h1>
-            <p className="question-description">{question.content}</p>
-            <div className="question-meta-grid">
-              <div>
-                <span className="meta-label">Difficulty</span>
-                <span className={`difficulty-badge difficulty-${(question.difficulty || 'medium').toLowerCase()}`}>
-                  {(question.difficulty || 'medium').toUpperCase()}
-                </span>
+            <div className="question-header">
+              <h1>{question.title}</h1>
+              <div className="question-meta-grid">
+                <div>
+                  <span className="meta-label">Difficulty</span>
+                  <span className={`difficulty-badge difficulty-${(question.difficulty || 'medium').toLowerCase()}`}>
+                    {(question.difficulty || 'medium').toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <span className="meta-label">Time Limit</span>
+                  <span className="meta-value">
+                    <Clock size={14} />
+                    {question.time_limit}s
+                  </span>
+                </div>
+                <div>
+                  <span className="meta-label">Added</span>
+                  <span className="meta-value">
+                    <FileText size={14} />
+                    {new Date(question.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
               </div>
-              <div>
-                <span className="meta-label">Time Limit</span>
-                <span className="meta-value">
-                  <Clock size={14} />
-                  {question.time_limit}s
-                </span>
-              </div>
-              <div>
-                <span className="meta-label">Added</span>
-                <span className="meta-value">
-                  <FileText size={14} />
-                  {new Date(question.createdAt).toLocaleDateString()}
-                </span>
+            </div>
+            <div className="question-content-scrollable">
+              <div className="question-description markdown-content">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {question.content}
+                </ReactMarkdown>
               </div>
             </div>
           </section>
@@ -119,33 +136,37 @@ int main() {
           <section className="question-right">
             <div className="editor-card">
               <label className="code-label">Write your C++ solution</label>
-              <textarea
-                className="code-editor"
-                value={code}
-                onChange={(event) => setCode(event.target.value)}
-                placeholder="Write your C++ code here..."
-              />
-              <div className="code-actions">
-                <button
-                  className="btn btn-primary btn-submit"
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                >
-                  {submitting ? (
-                    <>
-                      <div className="spinner" style={{ display: 'inline-block', marginRight: '0.5rem' }}></div>
-                      Submitting...
-                    </>
-                  ) : (
-                    'Submit'
-                  )}
-                </button>
+              <div className="code-editor-container">
+                <textarea
+                  className="code-editor"
+                  value={code}
+                  onChange={(event) => setCode(event.target.value)}
+                  placeholder="Write your C++ code here..."
+                />
               </div>
-              {!isAuthenticated && (
-                <p className="auth-hint">
-                  Sign in to submit solutions. Viewing questions is open to all users.
-                </p>
-              )}
+              <div className="code-actions-sticky">
+                <div className="code-actions">
+                  <button
+                    className="btn btn-primary btn-submit"
+                    onClick={handleSubmit}
+                    disabled={submitting}
+                  >
+                    {submitting ? (
+                      <>
+                        <div className="spinner" style={{ display: 'inline-block', marginRight: '0.5rem' }}></div>
+                        Submitting...
+                      </>
+                    ) : (
+                      'Submit'
+                    )}
+                  </button>
+                </div>
+                {!isAuthenticated && (
+                  <p className="auth-hint">
+                    Sign in to submit solutions. Viewing questions is open to all users.
+                  </p>
+                )}
+              </div>
             </div>
 
             {result && (

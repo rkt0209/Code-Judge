@@ -27,16 +27,24 @@ exports.checkSubmitRequest = [
 
 // --- MAIN CONTROLLER (Standard Mode) ---
 exports.submitFile = asyncHandler(async (req, res) => {
+    console.log('=== SUBMIT FILE REQUEST ===');
+    console.log('req.body:', req.body);
+    console.log('req.files:', req.files);
+    console.log('req.auth_user:', req.auth_user);
+    
     const user_id = req.auth_user.static_id;
     const { question_id } = req.body;
 
     let base64_encoded_data;
     if (req.files && req.files.submission_file) {
         const file_path = req.files.submission_file[0].path;
+        console.log('File path:', file_path);
         const file_buffer = fs.readFileSync(file_path);
         base64_encoded_data = file_buffer.toString("base64");
         fs.unlinkSync(file_path); 
     } else {
+        console.log('ERROR: No submission file found');
+        console.log('req.files:', JSON.stringify(req.files));
         throw new ErrorResponse("Submission File Missing", 400);
     }
 
