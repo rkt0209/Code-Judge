@@ -71,11 +71,11 @@ This project **requires** Redis to manage the job queue. Without it, the worker 
 ### Command
 
 ```
-git clone https://github.com/rohit070805/Code-Judge-Rohit.git
+git clone https://github.com/rkt0209/Code-Judge.git
 ```
 ### Go inside the project:
 ```
-cd Code-Judge-Rohit
+cd Code-Judge
 ```
 
 
