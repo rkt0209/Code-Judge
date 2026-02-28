@@ -16,6 +16,11 @@ const jobQueue = new Queue('job-queue', {
     redis: redisConfig
 });
 
+// Create the Retry Queue
+const retryQueue = new Queue('retry-submissions', {
+    redis: redisConfig
+});
+
 const addJobToQueue = async (jobId) => {
     await jobQueue.add({
         id: jobId
@@ -23,4 +28,14 @@ const addJobToQueue = async (jobId) => {
     console.log(`Job ${jobId} added to queue`);
 };
 
-module.exports = { addJobToQueue, jobQueue };
+const addJobToRetryQueue = async (jobData, options = {}) => {
+    await retryQueue.add(jobData, options);
+    console.log(`Retry job for submission ${jobData.submission_id} added to retry queue (Attempt ${jobData.retry_count})`);
+};
+
+module.exports = { 
+    addJobToQueue, 
+    jobQueue, 
+    addJobToRetryQueue, 
+    retryQueue 
+};
