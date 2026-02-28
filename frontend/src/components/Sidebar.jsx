@@ -22,6 +22,10 @@ export const Sidebar = ({
           <Home size={16} />
           Home
         </Link>
+        <Link to="/contests" className={`nav-item ${active === 'contests' ? 'active' : ''}`}>
+          <Trophy size={16} />
+          Contests
+        </Link>
         {role === 'admin' && (
           <>
             <Link to="/admin/add-question" className={`nav-item ${active === 'add-question' ? 'active' : ''}`}>
@@ -32,18 +36,11 @@ export const Sidebar = ({
               <Users size={16} />
               User Activity
             </Link>
-            <Link to="/admin/contests" className={`nav-item ${active === 'contests' ? 'active' : ''}`}>
+            <Link to="/admin/manage-contests" className={`nav-item ${active === 'manage-contests' ? 'active' : ''}`}>
               <LayoutGrid size={16} />
-              Create Contests
+              Manage Contests
             </Link>
           </>
-        )}
-        {role !== 'admin' && (
-          <button className="nav-item" type="button" disabled>
-            <Trophy size={16} />
-            Contests
-            <span className="nav-tag">Soon</span>
-          </button>
         )}
       </nav>
 

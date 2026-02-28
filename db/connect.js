@@ -1,12 +1,12 @@
 const mongoose = require("mongoose");
 
-const dbConnect = async () => {
+const dbConnect = async (mongoUri) => {
     try {
         // Log this to see if it's reading the variable!
-        console.log("Connecting to Mongo URL:", process.env.MONGO_URL); 
+        console.log("Connecting to Mongo URL:", mongoUri); 
 
-        // Ensure process.env.MONGO_URL matches your .env file
-        await mongoose.connect(process.env.MONGO_URL); 
+        // Use the passed mongoUri parameter
+        await mongoose.connect(mongoUri); 
 
         console.log("MongoDB Connected Successfully");
     } catch (error) {

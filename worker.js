@@ -10,8 +10,11 @@ require("dotenv").config();
 const Submission = require("./models/Submission");
 const Question = require("./models/Question");
 
+// Contest controller for updating progress
+const { updateContestProgress } = require("./controllers/user/contest");
+
 // 1. Connect to MongoDB
-mongoose.connect(process.env.MONGO_URL)
+mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("✅ Worker Connected to MongoDB"))
     .catch((err) => console.error("❌ Worker Mongo Error:", err));
 
@@ -72,7 +75,7 @@ const downloadFile = (file, file_path, mode) => {
     });
 };
 
-const updateSubmissionInDB = async (submissionId, result) => {
+const updateSubmissionInDB = async (submissionId, result, contest_id, user_id, question_id) => {
     const { execution_time, time_limit, compiled, correctAnswer } = result;
     let status = "";
     
@@ -89,11 +92,17 @@ const updateSubmissionInDB = async (submissionId, result) => {
 
     // 🟢 LOG: Final Verdict
     console.log(`📝 Verdict for ${submissionId}: ${status}`);
+
+    // Update contest progress if this is a contest submission
+    if (contest_id && user_id) {
+        console.log(`📊 Updating contest progress for contest ${contest_id}`);
+        await updateContestProgress(contest_id, user_id, question_id, status);
+    }
 };
 
 // --- WORKER LOGIC ---
 submissionQueue.process(async (job, done) => {
-    const { question_id, base64_encoded_data, submission_id } = job.data;
+    const { question_id, base64_encoded_data, submission_id, contest_id, user_id } = job.data;
     const jobId = job.id; 
 
     // 🟢 LOG: Job Received
@@ -168,7 +177,7 @@ submissionQueue.process(async (job, done) => {
                 execution_time: 0,
                 correctAnswer: false
             };
-            await updateSubmissionInDB(submission_id, result);
+            await updateSubmissionInDB(submission_id, result, contest_id, user_id, question_id);
             await cleanupFiles();
             done(null, result);
             return;
@@ -197,7 +206,7 @@ submissionQueue.process(async (job, done) => {
                 execution_time: execution_time,
                 correctAnswer: false
             };
-            await updateSubmissionInDB(submission_id, result);
+            await updateSubmissionInDB(submission_id, result, contest_id, user_id, question_id);
             await cleanupFiles();
             done(null, result);
             return;
@@ -209,7 +218,7 @@ submissionQueue.process(async (job, done) => {
         await cleanupFiles();
 
         const result = { compiled: true, time_limit, execution_time, correctAnswer };
-        await updateSubmissionInDB(submission_id, result);
+        await updateSubmissionInDB(submission_id, result, contest_id, user_id, question_id);
 
         done(null, result);
 

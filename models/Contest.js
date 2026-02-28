@@ -5,6 +5,11 @@ const ContestSchema = mongoose.Schema(
     title: {
       type: String,
       required: true,
+      unique: true
+    },
+    description: {
+      type: String,
+      default: ""
     },
     start_time: {
       type: Date,
@@ -13,6 +18,10 @@ const ContestSchema = mongoose.Schema(
     end_time: {
       type: Date,
       required: true,
+    },
+    duration: {
+      type: Number, // in minutes
+      required: true
     },
     questions: [
       {
@@ -24,18 +33,43 @@ const ContestSchema = mongoose.Schema(
     ],
     participants: [
       {
-        participant_id: {
+        user_id: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "User",
         },
-      },
-    ],
-    submissions: [
-      {
-        submission_id: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Submission",
+        started_at: {
+          type: Date,
+          default: Date.now
         },
+        questions_solved: {
+          type: Number,
+          default: 0
+        },
+        time_taken: {
+          type: Number, // in minutes
+          default: 0
+        },
+        solved_questions: [
+          {
+            question_id: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "Question",
+            },
+            solved_at: Date,
+          }
+        ],
+        attempted_questions: [
+          {
+            question_id: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "Question",
+            },
+            status: {
+              type: String,
+              enum: ["attempted", "solved", "incorrect"]
+            }
+          }
+        ]
       },
     ],
   },

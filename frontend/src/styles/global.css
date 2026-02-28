@@ -1286,3 +1286,457 @@ textarea {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--gray-400);
 }
+
+/* Contest Styles */
+.contests-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.contest-card {
+  padding: 1.5rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.contest-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.contest-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.contest-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.contest-description {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  min-height: 3rem;
+}
+
+.contest-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.contest-stats span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.contest-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-success {
+  background: rgba(16, 185, 129, 0.1);
+  color: rgb(16, 185, 129);
+}
+
+.badge-info {
+  background: rgba(59, 130, 246, 0.1);
+  color: rgb(59, 130, 246);
+}
+
+.badge-secondary {
+  background: rgba(107, 114, 128, 0.1);
+  color: rgb(107, 114, 128);
+}
+
+/* Active Contest Layout */
+.active-contest {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.contest-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: var(--bg-light);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.contest-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.contest-timer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  color: white;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.timer-text {
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.contest-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.contest-sidebar {
+  width: 280px;
+  background: var(--bg-light);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s, margin-left 0.3s;
+  position: relative;
+}
+
+.contest-sidebar.collapsed {
+  width: 0;
+  margin-left: -280px;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  right: -15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: var(--shadow-sm);
+}
+
+.sidebar-toggle:hover {
+  background: var(--bg-secondary);
+}
+
+.sidebar-content {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-content h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+}
+
+.problems-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.problem-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-lighter);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.problem-item:hover {
+  background: var(--bg-secondary);
+  border-color: var(--accent);
+}
+
+.problem-item.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.problem-item.active .problem-number {
+  background: white;
+  color: var(--accent);
+}
+
+.problem-item.status-solved {
+  border-left: 3px solid rgb(16, 185, 129);
+}
+
+.problem-item.status-incorrect {
+  border-left: 3px solid rgb(239, 68, 68);
+}
+
+.problem-item.status-attempted {
+  border-left: 3px solid rgb(251, 191, 36);
+}
+
+.problem-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.problem-title {
+  flex: 1;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contest-stats {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.contest-stats p {
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.text-success { color: rgb(16, 185, 129); }
+.text-error { color: rgb(239, 68, 68); }
+.text-warning { color: rgb(251, 191, 36); }
+.text-secondary { color: var(--text-secondary); }
+
+.contest-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  overflow: hidden;
+}
+
+.question-panel,
+.code-panel {
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.question-header-fixed {
+  flex-shrink: 0;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+
+.question-header-fixed h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+}
+
+.question-meta-inline {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.question-meta-inline span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.question-content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.code-editor-wrapper {
+  flex: 1;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  display: flex;
+}
+
+.code-actions-bar {
+  flex-shrink: 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-light);
+}
+
+.result-box {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid;
+}
+
+.result-box.result-accepted {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgb(16, 185, 129);
+  color: rgb(16, 185, 129);
+}
+
+.result-box.result-wrong-answer,
+.result-box.result-compilation-error,
+.result-box.result-time-limit-exceeded {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgb(239, 68, 68);
+  color: rgb(239, 68, 68);
+}
+
+.result-box.result-pending {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgb(59, 130, 246);
+  color: rgb(59, 130, 246);
+}
+
+.result-box h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.contest-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: var(--bg);
+}
+
+.contests-list {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.contest-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.contest-card-header h3 {
+  margin: 0;
+}
+
+.contest-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.contest-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-top: 1rem;
+}
+
+.contest-meta span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+/* Contest Status Styles */
+.active-contest-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  background: var(--bg-lighter);
+}
+
+.status-card {
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  max-width: 500px;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+}
+
+.status-card h2 {
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.status-card p {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.join-section {
+  margin: 2rem 0;
+}
+
+.status-card .btn-primary,
+.status-card .btn-secondary {
+  margin: 0.5rem 0.5rem;
+  min-width: 200px;
+}
